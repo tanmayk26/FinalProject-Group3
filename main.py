@@ -47,3 +47,13 @@ for i, col in enumerate(disc_cols):
     plt.title(col)
 plt.tight_layout()
 plt.show()
+
+# Correlation matrix
+
+corr_matrix = df[['Location','MinTemp','MaxTemp','Rainfall','Evaporation','Sunshine','WindGustSpeed','WindSpeed9am','WindSpeed3pm','Humidity9am','Humidity3pm', 'Pressure9am', 'Pressure3pm', 'Cloud9am', 'Cloud3pm', 'Temp9am', 'Temp3pm']].corr().round(2)
+
+plt.figure(figsize=(12,10))
+sns.heatmap(data=corr_matrix, annot=True)
+plt.title('Correlation Coefficent Between Features\n',fontsize=20)
+plt.tight_layout()
+plt.show()
