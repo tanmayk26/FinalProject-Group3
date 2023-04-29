@@ -1,7 +1,7 @@
 ## Rainfall Prediction
 
 ### Introduction
-In this project, we analyze the "WeatherAUS" dataset which contains weather observations from numerous Australian weather stations. We explore the data to identify trends and insights about the weather patterns in Australia.
+This machine learning project aims to predict whether it will rain on a given day using the weather dataset from the kaggle package, which contains daily weather observations from various weather stations across Australia. The dataset includes information such as temperature, humidity, rainfall, and wind speed, among others. The project will involve exploratory data analysis, data preprocessing, model training and evaluation, and hyperparameter tuning to select the best performing model. The final result will be a machine learning model that can accurately predict whether it will rain on a given day based on the weather observations.
 
 ### Team Members
 * Tanmay Vivek Kshirsagar
