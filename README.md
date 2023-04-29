@@ -1,4 +1,4 @@
-## Weather Data Analysis
+## Rainfall Prediction
 
 ### Introduction
 In this project, we analyze the "WeatherAUS" dataset which contains weather observations from numerous Australian weather stations. We explore the data to identify trends and insights about the weather patterns in Australia.
