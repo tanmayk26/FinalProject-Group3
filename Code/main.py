@@ -2,7 +2,7 @@
 
 # Calling different modules
 from models import models
-from tools import impute_scale, impute_one_hot_encode
+from tools import impute_scale, impute_one_hot_encode, yes_no_to_binary
 
 # Data Manipulation & Visualization libraries
 import pandas as pd
@@ -12,6 +12,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import SelectFromModel
 from sklearn.utils import resample
 from imblearn.over_sampling import SMOTE
+from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import SelectKBest, f_regression
+from sklearn.feature_selection import SelectKBest, chi2
+
+
 
 # Feature Selection
 from sklearn.ensemble import RandomForestClassifier
@@ -63,11 +68,78 @@ plt.show()
 print(X.head())
 print(y.head())
 
+# Perform Hypothesis Testing
+X_star=X[disc_cols]
+imputer_num = SimpleImputer(strategy='mean')
+X_star = imputer_num.fit_transform(X_star)
+
+
+# Apply the function to the 'response' column and create a new 'binary_response' column
+y_test= y.apply(yes_no_to_binary)
+
+feature_selector = SelectKBest(f_regression, k = "all")
+fit = feature_selector.fit(X_star,y_test)
+
+p_values = pd.DataFrame(fit.pvalues_)
+scores = pd.DataFrame(fit.scores_)
+input_variable_names = pd.DataFrame(pd.DataFrame(X_star).columns)
+#input_variable_names = pd.DataFrame(X_star).columns
+summary_stats = pd.concat([input_variable_names, p_values, scores], axis = 1)
+summary_stats.columns = ["input_variable", "p_value", "f_score"]
+summary_stats.sort_values(by = "p_value", inplace = True)
+
+p_value_threshold = 0.05
+score_threshold = 5
+
+selected_variables = summary_stats.loc[(summary_stats["f_score"] >= score_threshold) &
+                                       (summary_stats["p_value"] <= p_value_threshold)]
+selected_variables = selected_variables["input_variable"].tolist()
+print(selected_variables)
+X_new = X_star[selected_variables]
+
+print(X_new)
+
+#
+# X_car=X[cat_cols]
+# import researchpy as rp
+# crosstab, test_results, expected = rp.crosstab(X_car["WindGustDir"], y,
+#                                                test= "chi-square",
+#                                                expected_freqs= True,
+#                                                prop= "cell")
+#
+# print(test_results)
+#
+# import researchpy as rp
+# crosstab, test_results, expected = rp.crosstab(X_car["WindDir9am"], y,
+#                                                test= "chi-square",
+#                                                expected_freqs= True,
+#                                                prop= "cell")
+# import researchpy as rp
+# crosstab, test_results, expected = rp.crosstab(X_car["WindDir3pm"], y,
+#                                                test= "chi-square",
+#                                                expected_freqs= True,
+#                                                prop= "cell")
+#
+# import researchpy as rp
+# crosstab, test_results, expected = rp.crosstab(X_car["RainToday"], y,
+#                                                test= "chi-square",
+#                                                expected_freqs= True,
+#                                                prop= "cell")
+#
+# import researchpy as rp
+# crosstab, test_results, expected = rp.crosstab(X_car["Location"], y,
+#                                                test= "chi-square",
+#                                                expected_freqs= True,
+#                                                prop= "cell")
+
 # Split the dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 print(X_train.shape)
 print(y_train.shape)
+
+
+
 
 # # Impute & scale
 X_train, X_test = impute_scale(X_train, X_test)
@@ -83,6 +155,7 @@ print(y_test.head())
 models(X_train, X_test, y_train, y_test)
 
 # Feature Selection
+
 sel = SelectFromModel(RandomForestClassifier())
 sel.fit(X_train, y_train)
 

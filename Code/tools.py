@@ -58,3 +58,11 @@ def impute_one_hot_encode(X_train, X_test):
     return X_train, X_test
 
 
+# Define a function to convert "yes" and "no" strings to binary values
+def yes_no_to_binary(response):
+    if response.lower() == "yes":
+        return 1
+    elif response.lower() == "no":
+        return 0
+    else:
+        return None
