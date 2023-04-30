@@ -6,6 +6,7 @@ from tools import impute_scale, impute_one_hot_encode, yes_no_to_binary
 
 # Data Manipulation & Visualization libraries
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
@@ -28,7 +29,7 @@ from sklearn.ensemble import RandomForestClassifier
 df = pd.read_csv('weatherAUS.csv')
 
 # Drop columns that are not required
-df = df.drop(['Date', 'Location', 'Evaporation', 'Sunshine', 'Cloud9am', 'Cloud3pm', 'Temp9am', 'Temp3pm'], axis=1)
+df = df.drop(['Date',  'Evaporation', 'Sunshine', 'Cloud9am', 'Cloud3pm', 'Temp9am', 'Temp3pm'], axis=1)
 df.info()
 # Remove rows with missing values in the target variable
 df = df.dropna(subset=['RainTomorrow'])
@@ -55,83 +56,92 @@ for i, col in enumerate(cat_cols):
 plt.tight_layout()
 plt.show()
 
-# Plot discrete data
-n_rows = (len(disc_cols) // 3) + (len(disc_cols) % 3 > 0) # Calculate number of subplot rows
-plt.figure(figsize=(12, n_rows*4))
-for i, col in enumerate(disc_cols):
-    plt.subplot(n_rows, 3, i+1)
-    sns.histplot(x=col, data=df, kde=True)
-    plt.title(col)
-plt.tight_layout()
-plt.show()
+# # Plot discrete data
+# n_rows = (len(disc_cols) // 3) + (len(disc_cols) % 3 > 0) # Calculate number of subplot rows
+# plt.figure(figsize=(12, n_rows*4))
+# for i, col in enumerate(disc_cols):
+#     plt.subplot(n_rows, 3, i+1)
+#     sns.histplot(x=col, data=df, kde=True)
+#     plt.title(col)
+# plt.tight_layout()
+# plt.show()
 
-print(X.head())
-print(y.head())
+# print(X.head())
+# print(y.head())
 
 # Perform Hypothesis Testing
-X_star=X[disc_cols]
+numerical_features = X.select_dtypes(include=[np.number]).columns.tolist()
+
+# Perform preprocessing for numerical features
 imputer_num = SimpleImputer(strategy='mean')
-X_star = imputer_num.fit_transform(X_star)
+X[numerical_features] = imputer_num.fit_transform(X[numerical_features])
 
-
+X_star=X[numerical_features]
+X_star=pd.DataFrame(X_star)
+print(X_star.head())
 # Apply the function to the 'response' column and create a new 'binary_response' column
 y_test= y.apply(yes_no_to_binary)
 
-feature_selector = SelectKBest(f_regression, k = "all")
-fit = feature_selector.fit(X_star,y_test)
+
+feature_selector = SelectKBest(f_regression, k="all")
+fit = feature_selector.fit(X_star, y_test)
 
 p_values = pd.DataFrame(fit.pvalues_)
 scores = pd.DataFrame(fit.scores_)
-input_variable_names = pd.DataFrame(pd.DataFrame(X_star).columns)
-#input_variable_names = pd.DataFrame(X_star).columns
-summary_stats = pd.concat([input_variable_names, p_values, scores], axis = 1)
-summary_stats.columns = ["input_variable", "p_value", "f_score"]
-summary_stats.sort_values(by = "p_value", inplace = True)
+input_variable_names = pd.DataFrame(X_star.columns)
+print(input_variable_names)
+summary_stats = pd.concat([input_variable_names, p_values, scores], axis=1)
+summary_stats.columns = ["input_variable", "p_value", "chi2_score"]
+summary_stats.sort_values(by="p_value", inplace=True)
 
 p_value_threshold = 0.05
 score_threshold = 5
 
-selected_variables = summary_stats.loc[(summary_stats["f_score"] >= score_threshold) &
+selected_variables = summary_stats.loc[(summary_stats["chi2_score"] >= score_threshold) &
                                        (summary_stats["p_value"] <= p_value_threshold)]
 selected_variables = selected_variables["input_variable"].tolist()
-print(selected_variables)
 X_new = X_star[selected_variables]
+X_new=pd.DataFrame(X_new)
+print(X_new.head())
 
-print(X_new)
+categorical_features = X.select_dtypes(include=object).columns.tolist()
+X_car=X[categorical_features]
+import researchpy as rp
+crosstab, test_results, expected = rp.crosstab(X_car["WindGustDir"], y_test,
+                                               test= "chi-square",
+                                               expected_freqs= True,
+                                               prop= "cell")
 
-#
-# X_car=X[cat_cols]
-# import researchpy as rp
-# crosstab, test_results, expected = rp.crosstab(X_car["WindGustDir"], y,
-#                                                test= "chi-square",
-#                                                expected_freqs= True,
-#                                                prop= "cell")
-#
-# print(test_results)
-#
-# import researchpy as rp
-# crosstab, test_results, expected = rp.crosstab(X_car["WindDir9am"], y,
-#                                                test= "chi-square",
-#                                                expected_freqs= True,
-#                                                prop= "cell")
-# import researchpy as rp
-# crosstab, test_results, expected = rp.crosstab(X_car["WindDir3pm"], y,
-#                                                test= "chi-square",
-#                                                expected_freqs= True,
-#                                                prop= "cell")
-#
-# import researchpy as rp
-# crosstab, test_results, expected = rp.crosstab(X_car["RainToday"], y,
-#                                                test= "chi-square",
-#                                                expected_freqs= True,
-#                                                prop= "cell")
-#
-# import researchpy as rp
-# crosstab, test_results, expected = rp.crosstab(X_car["Location"], y,
-#                                                test= "chi-square",
-#                                                expected_freqs= True,
-#                                                prop= "cell")
+print(test_results)
 
+import researchpy as rp
+crosstab, test_results, expected = rp.crosstab(X_car["WindDir9am"], y_test,
+                                               test= "chi-square",
+                                               expected_freqs= True,
+                                               prop= "cell")
+
+print(test_results)
+import researchpy as rp
+crosstab, test_results, expected = rp.crosstab(X_car["WindDir3pm"], y_test,
+                                               test= "chi-square",
+                                               expected_freqs= True,
+                                               prop= "cell")
+
+print(test_results)
+import researchpy as rp
+crosstab, test_results, expected = rp.crosstab(X_car["RainToday"], y_test,
+                                               test= "chi-square",
+                                               expected_freqs= True,
+                                               prop= "cell")
+
+print(test_results)
+import researchpy as rp
+crosstab, test_results, expected = rp.crosstab(X_car["Location"], y_test,
+                                               test= "chi-square",
+                                               expected_freqs= True,
+                                               prop= "cell")
+
+print(test_results)
 # Split the dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
