@@ -35,7 +35,7 @@ y = df['RainTomorrow']
 sns.histplot(df['RainTomorrow'])
 plt.show()
 
-<<<<<<< Updated upstream
+
 # Plot discrete data
 n_rows = (len(disc_cols) // 3) + (len(disc_cols) % 3 > 0) # Calculate number of subplot rows
 plt.figure(figsize=(12, n_rows*4))
@@ -45,7 +45,7 @@ for i, col in enumerate(disc_cols):
     plt.title(col)
 plt.tight_layout()
 plt.show()
-=======
+
 print(X.head())
 print(y.head())
 
@@ -143,4 +143,3 @@ X_test, y_test = sm.fit_resample(X_test, y_test)
 # 4 Call model here
 models(X_train, X_test, y_train, y_test)
 
->>>>>>> Stashed changes
