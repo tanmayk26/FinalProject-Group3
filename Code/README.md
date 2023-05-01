@@ -5,6 +5,6 @@ There are 3 python scripts namely:
   - tools.py
   - models.py
 
-The data csv file is provided and all the files should be in the same directory.
+The data csv file 'weather.csv' is provided and all the files should be in the same directory.
 
 The user only needs to run the main.py python script.
