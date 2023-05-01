@@ -1,242 +1,212 @@
 # Import required libraries
 
-# Calling different modules
+from tools import imputer, impute_scale, impute_one_hot_encode, yes_no_to_binary
 from models import models
-from tools import impute_scale, impute_one_hot_encode, yes_no_to_binary
 
-# Data Manipulation & Visualization libraries
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.feature_selection import SelectFromModel
-from sklearn.utils import resample
+from sklearn.neighbors import KNeighborsClassifier
+import missingno as msno
 from imblearn.over_sampling import SMOTE
-from sklearn.impute import SimpleImputer
+from sklearn.decomposition import PCA
+from sklearn.model_selection import cross_val_score
+import researchpy as rp
 from sklearn.feature_selection import SelectKBest, f_regression
-from sklearn.feature_selection import SelectKBest, chi2
 
 
-
-# Feature Selection
-from sklearn.ensemble import RandomForestClassifier
-
-# import warnings
-# warnings.filterwarnings("ignore")
-
-# Load the data
 df = pd.read_csv('weatherAUS.csv')
-
-# Drop columns that are not required
-df = df.drop(['Date',  'Evaporation', 'Sunshine', 'Cloud9am', 'Cloud3pm', 'Temp9am', 'Temp3pm'], axis=1)
-df.info()
-# Remove rows with missing values in the target variable
 df = df.dropna(subset=['RainTomorrow'])
+labels = ['No', 'Yes']
+print(df.head(10))
 
-# Split the dataset into features and target variable
+print(f'The number of rows are {df.shape[0] } and the number of columns are {df.shape[1]}')
+
+print(df.info())
+
+print(df.nunique())
+
+print(df.isnull().sum())
+
+msno.bar(df, sort='ascending')
+plt.show()
+
+df['RainTomorrow'] = df['RainTomorrow'].apply(yes_no_to_binary)
+
+df['Date'] = pd.to_datetime(df['Date'])
+df['Year'] = df['Date'].dt.year
+df['Month'] = df['Date'].dt.month
+df['Day'] = df['Date'].dt.day
+df = df.drop('Date', axis=1)
+
+#df = df.dropna(axis=0, how='any', subset=["RainTomorrow"])
+
+print(df.shape)
+
+
 X = df.drop('RainTomorrow', axis=1)
 y = df['RainTomorrow']
 
-sns.histplot(df['RainTomorrow'])
-plt.show()
+# Perform preprocessing for numerical features
+X = imputer(X)
+
+# 6 columns are of type 'object' and remaining of 'float'
+cat, cont = [], []
 
 
-# Separate categorical and discrete data
-cat_cols = df.select_dtypes(include=['object']).columns.tolist()
-disc_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+X_viz_list = X.drop(['Year', 'Month', 'Day'], axis=1)
 
-# Plot categorical data
-n_rows = (len(cat_cols) // 3) + (len(cat_cols) % 3 > 0) # Calculate number of subplot rows
-plt.figure(figsize=(12, n_rows*4))
-for i, col in enumerate(cat_cols):
-    plt.subplot(n_rows, 3, i+1)
-    sns.countplot(x=col, data=df)
-    plt.title(col)
+for i in X_viz_list.columns:
+    if X[i].dtypes == 'object':
+        cat.append(i)
+    else:
+        cont.append(i)
+
+print(cat)
+
+print("Categorical Variables are", cat)
+print("Numerical Variables are", cont)
+
+num_cols = len(cont)
+num_rows = (num_cols + 2) // 3  # Round up to nearest multiple of 3
+fig, axes = plt.subplots(num_rows, 3, figsize=(16, 4*num_rows))
+
+for i, column in enumerate(X[cont]):
+    row_idx = i // 3
+    col_idx = i % 3
+    axes[row_idx, col_idx].hist(X[column])
+    axes[row_idx, col_idx].set_title(column)
+
 plt.tight_layout()
 plt.show()
 
-# # Plot discrete data
-# n_rows = (len(disc_cols) // 3) + (len(disc_cols) % 3 > 0) # Calculate number of subplot rows
-# plt.figure(figsize=(12, n_rows*4))
-# for i, col in enumerate(disc_cols):
-#     plt.subplot(n_rows, 3, i+1)
-#     sns.histplot(x=col, data=df, kde=True)
-#     plt.title(col)
-# plt.tight_layout()
-# plt.show()
 
-# print(X.head())
-# print(y.head())
+sns.countplot(x=X["WindGustDir"], hue=y)
+plt.show()
+crosstab, test_results, expected = rp.crosstab(X["WindDir9am"], y,
+                                               test="chi-square",
+                                               expected_freqs= True,
+                                               prop="cell")
 
-# Perform Hypothesis Testing
-numerical_features = X.select_dtypes(include=[np.number]).columns.tolist()
+print("\n", test_results)
 
-# Perform preprocessing for numerical features
-imputer_num = SimpleImputer(strategy='mean')
-X[numerical_features] = imputer_num.fit_transform(X[numerical_features])
+sns.countplot(x=X["WindDir3pm"], hue=y)
+plt.show()
+crosstab, test_results, expected = rp.crosstab(X["WindDir3pm"], y,
+                                               test= "chi-square",
+                                               expected_freqs= True,
+                                               prop= "cell")
 
-X_star=X[numerical_features]
-X_star=pd.DataFrame(X_star)
-print(X_star.head())
-# Apply the function to the 'response' column and create a new 'binary_response' column
-y_test= y.apply(yes_no_to_binary)
+print("\n", test_results)
 
+sns.countplot(x=X["RainToday"], hue=y)
+plt.show()
 
-feature_selector = SelectKBest(f_regression, k="all")
-fit = feature_selector.fit(X_star, y_test)
+crosstab, test_results, expected = rp.crosstab(X["RainToday"], y,
+                                               test= "chi-square",
+                                               expected_freqs= True,
+                                               prop= "cell")
+
+print("\n", test_results)
+
+sns.countplot(x=X["Location"], hue=y)
+plt.show()
+
+crosstab, test_results, expected = rp.crosstab(X["Location"], y,
+                                               test= "chi-square",
+                                               expected_freqs= True,
+                                               prop= "cell")
+
+print("\n", test_results)
+
+feature_selector = SelectKBest(score_func=f_regression, k="all")
+fit = feature_selector.fit(X[cont], y)
 
 p_values = pd.DataFrame(fit.pvalues_)
 scores = pd.DataFrame(fit.scores_)
-input_variable_names = pd.DataFrame(X_star.columns)
+input_variable_names = pd.DataFrame(X[cont].columns)
 print(input_variable_names)
 summary_stats = pd.concat([input_variable_names, p_values, scores], axis=1)
-summary_stats.columns = ["input_variable", "p_value", "chi2_score"]
+summary_stats.columns = ["input_variable", "p_value", "F-Score"]
 summary_stats.sort_values(by="p_value", inplace=True)
 
 p_value_threshold = 0.05
 score_threshold = 5
 
-selected_variables = summary_stats.loc[(summary_stats["chi2_score"] >= score_threshold) &
+selected_variables = summary_stats.loc[(summary_stats["F-Score"] >= score_threshold) &
                                        (summary_stats["p_value"] <= p_value_threshold)]
 selected_variables = selected_variables["input_variable"].tolist()
-X_new = X_star[selected_variables]
-X_new=pd.DataFrame(X_new)
-print(X_new.head())
+print(selected_variables)
 
-categorical_features = X.select_dtypes(include=object).columns.tolist()
-X_car=X[categorical_features]
-import researchpy as rp
-crosstab, test_results, expected = rp.crosstab(X_car["WindGustDir"], y_test,
-                                               test= "chi-square",
-                                               expected_freqs= True,
-                                               prop= "cell")
 
-print(test_results)
+# # MODELLING CODE STARTS HERE
 
-import researchpy as rp
-crosstab, test_results, expected = rp.crosstab(X_car["WindDir9am"], y_test,
-                                               test= "chi-square",
-                                               expected_freqs= True,
-                                               prop= "cell")
 
-print(test_results)
-import researchpy as rp
-crosstab, test_results, expected = rp.crosstab(X_car["WindDir3pm"], y_test,
-                                               test= "chi-square",
-                                               expected_freqs= True,
-                                               prop= "cell")
-
-print(test_results)
-import researchpy as rp
-crosstab, test_results, expected = rp.crosstab(X_car["RainToday"], y_test,
-                                               test= "chi-square",
-                                               expected_freqs= True,
-                                               prop= "cell")
-
-print(test_results)
-import researchpy as rp
-crosstab, test_results, expected = rp.crosstab(X_car["Location"], y_test,
-                                               test= "chi-square",
-                                               expected_freqs= True,
-                                               prop= "cell")
-
-print(test_results)
 # Split the dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-print(X_train.shape)
-print(y_train.shape)
+print(X_train.info())
 
+print(X_train.info())
 
-
-
-# # Impute & scale
 X_train, X_test = impute_scale(X_train, X_test)
-# One-hot encoding for categorical features
 X_train, X_test = impute_one_hot_encode(X_train, X_test)
 
-print(X_train.head())
-print(y_train.head())
-print(X_test.head())
-print(y_test.head())
-
-# 1 Call model here
-models(X_train, X_test, y_train, y_test)
-
-# Feature Selection
-
-sel = SelectFromModel(RandomForestClassifier())
-sel.fit(X_train, y_train)
-
-features = X_train.columns[(sel.get_support())]
-print(len(features))
-print(features)
-
-X_train_up = X_train.filter(items=features)
-X_test_up = X_test.filter(items=features)
-
-# 2 Call model here
-models(X_train_up, X_test_up, y_train, y_test)
-
-sns.histplot(df['RainTomorrow'])
+# models(X_train, X_test, y_train, y_test, labels)
+sns.countplot(x = y_train, hue = df['RainTomorrow'])
 plt.show()
 
-# # UPSAMPLING
-
-local_df = df.copy(deep=True)
-
-print(local_df)
-
-# create two different dataframe of majority and minority class
-df_majority = local_df[(local_df['RainTomorrow'] == "No")]
-df_minority = local_df[(local_df['RainTomorrow'] == "Yes")]
-# upsample minority class
-df_minority_upsampled = resample(df_minority,
-                                 replace=True,  # sample with replacement
-                                 n_samples=110316,  # to match majority class
-                                 random_state=42)  # reproducible results
-# Combine majority class with upsampled minority class
-df_upsampled = pd.concat([df_minority_upsampled, df_majority])
-
-sns.histplot(df_upsampled['RainTomorrow'])
-plt.show()
-
-X = df_upsampled.drop('RainTomorrow', axis=1)
-y = df_upsampled['RainTomorrow']
-
-# Split the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# # Impute & scale
-X_train, X_test = impute_scale(X_train, X_test)
-# One-hot encoding for categorical features
-X_train, X_test = impute_one_hot_encode(X_train, X_test)
-
-# 3 Call model here
-models(X_train, X_test, y_train, y_test)
-
-# # SMOTE
-
-sm_df = df.copy(deep=True)
-
-X = sm_df.drop('RainTomorrow', axis=1)
-y = sm_df['RainTomorrow']
-
-# Split the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# # Impute & scale
-X_train, X_test = impute_scale(X_train, X_test)
-# One-hot encoding for categorical features
-X_train, X_test = impute_one_hot_encode(X_train, X_test)
-
-sm = SMOTE(sampling_strategy='minority', random_state=42)
+sm = SMOTE()
+#(sampling_strategy='minority', random_state=42)
 
 # Fit and resample the data
 X_train, y_train = sm.fit_resample(X_train, y_train)
-X_test, y_test = sm.fit_resample(X_test, y_test)
+print(y_train)
 
-# 4 Call model here
-models(X_train, X_test, y_train, y_test)
+sns.countplot(x = y_train)
+plt.show()
+models(X_train, X_test, y_train, y_test, labels)
+
+# from lazypredict.Supervised import LazyClassifier
+# clf = LazyClassifier(verbose=0, ignore_warnings=True, custom_metric=None)
+# models, predictions = clf.fit(X_train, X_test, y_train, y_test)
+#
+# print(models)
+
+pca = PCA()
+pca.fit(X_train)
+cumsum = np.cumsum(pca.explained_variance_ratio_)*100
+d = [n for n in range(len(cumsum))]
+plt.figure(figsize=(10, 10))
+plt.plot(d, cumsum, color='red', label='cumulative explained variance')
+plt.title('Cumulative Explained Variance as a Function of the Number of Components')
+plt.ylabel('Cumulative Explained variance')
+plt.xlabel('Principal components')
+plt.axhline(y=95, color='k', linestyle='--', label='95% Explained Variance')
+plt.legend(loc='best')
+
+pca_train = PCA(.95)
+pca_train.fit(X_train)
+X_train_pca = pca_train.transform(X_train)
+# pca_test = PCA(.95)
+# pca_test.fit(X_test)
+X_test_pca = pca_train.transform(X_test)
+
+print('After PCA:')
+models(X_train_pca, X_test_pca, y_train, y_test, labels)
+
+print('k-Fold Cross Validation:')
+# k = n_neighbors
+knn = KNeighborsClassifier(n_neighbors=3)
+# K Fold CV K=10
+accuracies = cross_val_score(estimator=knn, X=X_train, y=y_train, cv=10)
+print(accuracies)
+
+print("average accuracy: ", np.mean(accuracies))
+print("average std: ", np.std(accuracies))
+
+knn.fit(X_train, y_train)
+# print("test accuracy: ", knn.score(X_test,y_test))
 
