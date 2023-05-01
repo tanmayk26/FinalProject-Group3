@@ -57,6 +57,28 @@ def impute_one_hot_encode(X_train, X_test):
     return X_train, X_test
 
 
+def plot_confusion_matrix(cm, labels, method_name):
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    ax.figure.colorbar(im, ax=ax)
+    ax.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           xticklabels=labels, yticklabels=labels,
+           title=f'Confusion Matrix-{method_name}',
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Add text annotations to each cell
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], 'd'),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+
+    fig.tight_layout()
+    plt.show()
+
 
 def models(X_train, X_test, y_train, y_test, labels):
     results = []
