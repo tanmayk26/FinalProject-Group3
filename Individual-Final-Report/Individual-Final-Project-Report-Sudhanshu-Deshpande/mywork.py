@@ -1,7 +1,7 @@
 # Put code here
 # Import required libraries
 
-from tools import imputer, impute_scale, impute_one_hot_encode, yes_no_to_binary
+from tools import impute_scale, impute_one_hot_encode, plot_confusion_matrix, yes_no_to_binary
 from models import models
 
 import seaborn as sns
